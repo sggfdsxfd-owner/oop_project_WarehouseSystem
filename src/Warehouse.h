@@ -24,6 +24,7 @@ public:
     // 貨物管理 API
     bool addCargo(std::shared_ptr<Cargo> cargo);
     bool removeCargo(const std::string& id);
+    bool relistCargo(const std::string& id);
     std::shared_ptr<Cargo> findCargo(const std::string& id) const;
     const std::vector<std::shared_ptr<Cargo>>& getInventory() const { return inventory; }
     

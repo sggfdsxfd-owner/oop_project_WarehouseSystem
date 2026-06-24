@@ -26,13 +26,18 @@ private:
 
     // 安全輸入函式
     std::string readString(const std::string& prompt) const;
+    std::string readPassword(const std::string& prompt) const;
     int readInt(const std::string& prompt) const;
     double readDouble(const std::string& prompt) const;
+    std::string getCurrentTimestamp() const;
 
     // 各選單流程
     void handleLogin(bool requireAdmin);
     void showAdminMenu();
     void showRegularMenu();
+    void registerAccountFlow();
+    void viewUnlistedCargoFlow(bool showAll);
+    void relistCargoFlow();
 
     // 功能子程序
     void listInventory(bool showAll = true) const; // true 顯示全部(Admin)，false 僅顯示目前使用者(Regular)

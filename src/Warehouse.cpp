@@ -32,7 +32,22 @@ bool Warehouse::removeCargo(const std::string& id) {
         [&id](const std::shared_ptr<Cargo>& c) { return c->getId() == id; });
     
     if (it != inventory.end()) {
-        inventory.erase(it);
+        auto cargo = *it;
+        if (!cargo->isListed()) return false;
+        cargo->setStatus("Unlisted");
+        return true;
+    }
+    return false;
+}
+
+bool Warehouse::relistCargo(const std::string& id) {
+    auto it = std::find_if(inventory.begin(), inventory.end(),
+        [&id](const std::shared_ptr<Cargo>& c) { return c->getId() == id; });
+    
+    if (it != inventory.end()) {
+        auto cargo = *it;
+        if (cargo->isListed()) return false;
+        cargo->setStatus("Active");
         return true;
     }
     return false;

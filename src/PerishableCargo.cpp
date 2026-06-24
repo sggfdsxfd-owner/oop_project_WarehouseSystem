@@ -3,8 +3,9 @@
 #include <cmath>
 
 PerishableCargo::PerishableCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                                 const std::string& owner, const std::string& expiryDate, double requiredTemp)
-    : Cargo(id, name, weight, volume, baseRate, owner), expiryDate(expiryDate), requiredTemp(requiredTemp) {}
+                                 const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                                 const std::string& expiryDate, double requiredTemp)
+    : Cargo(id, name, weight, volume, baseRate, owner, category, listingTime, status), expiryDate(expiryDate), requiredTemp(requiredTemp) {}
 
 double PerishableCargo::calculateStorageFee() const {
     double baseFee = volume * baseRate;

@@ -2,8 +2,9 @@
 #include <iomanip>
 
 FragileCargo::FragileCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                           const std::string& owner, const std::string& packagingType, int maxStackHeight)
-    : Cargo(id, name, weight, volume, baseRate, owner), packagingType(packagingType), maxStackHeight(maxStackHeight) {}
+                           const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                           const std::string& packagingType, int maxStackHeight)
+    : Cargo(id, name, weight, volume, baseRate, owner, category, listingTime, status), packagingType(packagingType), maxStackHeight(maxStackHeight) {}
 
 double FragileCargo::calculateStorageFee() const {
     double baseFee = volume * baseRate;

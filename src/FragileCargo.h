@@ -9,8 +9,9 @@ private:
     int maxStackHeight;        // 最大堆疊層數 (防止重壓)
 
 public:
-    FragileCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                 const std::string& owner, const std::string& packagingType, int maxStackHeight);
+    FragileCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate,
+                 const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                 const std::string& packagingType, int maxStackHeight);
 
     double calculateStorageFee() const override;
     void printDetails() const override;

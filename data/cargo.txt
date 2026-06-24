@@ -1,5 +1,7 @@
-General,C001,普通箱子,100,2,50,user
-Dangerous,C002,鋰電池組,50,0.5,120,user,5,UN3480
-Perishable,C003,新鮮水蜜桃,200,1.2,80,user,2026-07-01,4
-Fragile,C004,高級水晶燈,10,0.8,100,user,木箱,1
-Fragile,12,c001,12,100,1,sggf,木箱,12
+General,C001,普通箱子,100,2,50,user,,,Active
+General,s,C010,10,0.5,80,admin,測試分類,2026-06-24 17:07:50,Active
+General,C011,測試貨品2,12,1,90,admin,測試分類2,2026-06-24 17:08:59,Unlisted
+General,C002,meal,12,1,200,admin,,2026-06-24 17:14:44,Active
+General,C003,aBC,12,12,100,,,2026-06-24 17:16:43,Active
+General,C030,測試流程A,5,0.2,50,admin,食品,2026-06-24 17:25:42,Unlisted
+Perishable,,,12,12,111,,未分類,2026-06-24 17:42:45,Active,,12

@@ -2,8 +2,9 @@
 #include <iomanip>
 
 DangerousCargo::DangerousCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                               const std::string& owner, int hazardLevel, const std::string& unNumber)
-    : Cargo(id, name, weight, volume, baseRate, owner), hazardLevel(hazardLevel), unNumber(unNumber) {}
+                               const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                               int hazardLevel, const std::string& unNumber)
+    : Cargo(id, name, weight, volume, baseRate, owner, category, listingTime, status), hazardLevel(hazardLevel), unNumber(unNumber) {}
 
 double DangerousCargo::calculateStorageFee() const {
     // 額外加收：危險等級加成費率 + 固定安全監控保險費 500 元

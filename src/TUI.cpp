@@ -6,8 +6,12 @@
 #include <iomanip>
 #include <limits>
 #include <algorithm>
+#include <ctime>
 #ifdef _WIN32
 #include <conio.h>
+#else
+#include <termios.h>
+#include <unistd.h>
 #endif
 
 const std::string TUI::COLOR_RESET   = "\033[0m";
@@ -123,6 +127,47 @@ std::string TUI::readString(const std::string& prompt) const {
     return val;
 }
 
+std::string TUI::readPassword(const std::string& prompt) const {
+    std::cout << prompt;
+    std::string password;
+#ifdef _WIN32
+    while (true) {
+        int ch = _getch();
+        if (ch == 13) { // Enter
+            break;
+        } else if (ch == 8) { // Backspace
+            if (!password.empty()) {
+                password.pop_back();
+                std::cout << "\b \b";
+            }
+        } else if (ch == 0 || ch == 224) {
+            _getch();
+        } else if (ch >= 32 && ch <= 126) {
+            password.push_back(static_cast<char>(ch));
+            std::cout << '*';
+        }
+    }
+    std::cout << std::endl;
+#else
+    struct termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    std::getline(std::cin, password);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    std::cout << std::endl;
+#endif
+    return password;
+}
+
+std::string TUI::getCurrentTimestamp() const {
+    std::time_t now = std::time(nullptr);
+    char buffer[64];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
+    return std::string(buffer);
+}
+
 int TUI::readInt(const std::string& prompt) const {
     while (true) {
         std::cout << prompt;
@@ -161,6 +206,7 @@ void TUI::run() {
     std::vector<std::string> options = {
         "一般作業員登入 (Operator Login)",
         "系統管理員登入 (Admin Login)",
+        "註冊新帳號 (Register New Account)",
         "結束系統 (Exit System)"
     };
 
@@ -171,6 +217,8 @@ void TUI::run() {
         } else if (choice == 1) {
             handleLogin(true);
         } else if (choice == 2) {
+            registerAccountFlow();
+        } else if (choice == 3) {
             std::cout << COLOR_GREEN << "\n感謝使用本系統，資料已自動存檔，再見！" << COLOR_RESET << std::endl;
             break;
         }
@@ -182,7 +230,7 @@ void TUI::handleLogin(bool requireAdmin) {
     printHeader(requireAdmin ? "系統管理員登入 (Admin Login)" : "一般作業員登入 (Operator Login)");
     
     std::string username = readString("請輸入帳號: ");
-    std::string password = readString("請輸入密碼: ");
+    std::string password = readPassword("請輸入密碼: ");
 
     if (warehouse.login(username, password)) {
         auto user = warehouse.getCurrentUser();
@@ -217,11 +265,51 @@ void TUI::handleLogin(bool requireAdmin) {
     }
 }
 
+void TUI::registerAccountFlow() {
+    clearScreen();
+    printHeader("註冊新帳號 (Register New Account)");
+
+    std::string username = readString("請輸入新帳號: ");
+    if (warehouse.findUser(username) != nullptr) {
+        std::cout << COLOR_RED << "錯誤：該帳號已存在！" << COLOR_RESET << std::endl;
+        std::cout << "按任意鍵返回主選單..." << std::endl;
+        std::cin.get();
+        return;
+    }
+
+    std::string password = readPassword("請輸入新密碼: ");
+
+    std::vector<std::string> roleOptions = {
+        "一般作業員 (Regular Operator)",
+        "系統管理員 (Admin Manager)"
+    };
+
+    int roleChoice = selectMenu("請選擇使用者角色 (Select User Role)", roleOptions);
+    std::shared_ptr<User> newUser;
+    if (roleChoice == 1) {
+        newUser = std::make_shared<AdminUser>(username, password);
+    } else {
+        newUser = std::make_shared<RegularUser>(username, password);
+    }
+
+    if (warehouse.addUser(newUser)) {
+        database.saveUsers(warehouse);
+        std::cout << COLOR_GREEN << "\n註冊成功！帳號已儲存。" << COLOR_RESET << std::endl;
+    } else {
+        std::cout << COLOR_RED << "\n註冊失敗！請稍後再試。" << COLOR_RESET << std::endl;
+    }
+
+    std::cout << "按任意鍵返回主選單..." << std::endl;
+    std::cin.get();
+}
+
 void TUI::showAdminMenu() {
     std::vector<std::string> options = {
-        "查看倉庫所有貨物 (View All Cargo)",
+        "查看庫存貨物 (View Active Cargo)",
+        "查看下架貨物 (View Unlisted Cargo)",
         "新增貨物入庫 (Add Cargo)",
-        "辦理貨物出庫 (Remove Cargo)",
+        "下架貨物 (Unlist Cargo)",
+        "重新上架貨物 (Relist Cargo)",
         "倉庫營運統計與報表 (Operations Report)",
         "新增系統使用者帳號 (Add User)",
         "安全登出 (Logout)"
@@ -232,14 +320,18 @@ void TUI::showAdminMenu() {
         if (choice == 0) {
             listInventory(true);
         } else if (choice == 1) {
-            addCargoFlow();
+            viewUnlistedCargoFlow(true);
         } else if (choice == 2) {
-            removeCargoFlow();
+            addCargoFlow();
         } else if (choice == 3) {
-            showStatistics();
+            removeCargoFlow();
         } else if (choice == 4) {
-            addUserFlow();
+            relistCargoFlow();
         } else if (choice == 5) {
+            showStatistics();
+        } else if (choice == 6) {
+            addUserFlow();
+        } else if (choice == 7) {
             warehouse.logout();
             std::cout << COLOR_GREEN << "\n已成功登出。" << COLOR_RESET << std::endl;
             std::cout << "按任意鍵返回登入頁面..." << std::endl;
@@ -252,8 +344,10 @@ void TUI::showAdminMenu() {
 void TUI::showRegularMenu() {
     std::vector<std::string> options = {
         "查看我管理的貨物 (View My Cargo)",
+        "查看我的下架貨物 (View My Unlisted Cargo)",
         "申報新貨物入庫 (Declare New Cargo)",
-        "辦理貨物出庫 (Remove Cargo)",
+        "下架貨物 (Unlist Cargo)",
+        "重新上架貨物 (Relist Cargo)",
         "安全登出 (Logout)"
     };
 
@@ -262,10 +356,14 @@ void TUI::showRegularMenu() {
         if (choice == 0) {
             listInventory(false);
         } else if (choice == 1) {
-            addCargoFlow();
+            viewUnlistedCargoFlow(false);
         } else if (choice == 2) {
-            removeCargoFlow();
+            addCargoFlow();
         } else if (choice == 3) {
+            removeCargoFlow();
+        } else if (choice == 4) {
+            relistCargoFlow();
+        } else if (choice == 5) {
             warehouse.logout();
             std::cout << COLOR_GREEN << "\n已成功登出。" << COLOR_RESET << std::endl;
             std::cout << "按任意鍵返回登入頁面..." << std::endl;
@@ -285,7 +383,7 @@ void TUI::listInventory(bool showAll) const {
     // 進行過濾
     std::vector<std::shared_ptr<Cargo>> displayList;
     for (const auto& c : inventory) {
-        if (showAll || c->getOwner() == curUser->getUsername()) {
+        if (c->isListed() && (showAll || c->getOwner() == curUser->getUsername())) {
             displayList.push_back(c);
         }
     }
@@ -329,6 +427,18 @@ void TUI::addCargoFlow() {
     double volume = readDouble("請輸入貨物容積 (m³): ");
     double baseRate = readDouble("請輸入基本費率 (每月每 m³ 元): ");
 
+    // 分類採選單式選擇，提供常見選項並允許自訂
+    std::vector<std::string> categoryOptions = {"未分類", "電子", "食品", "水果", "家飾", "服飾", "其他"};
+    int catChoice = selectMenu("請選擇貨物分類 (Select Category)", categoryOptions);
+    std::string category;
+    if (catChoice == static_cast<int>(categoryOptions.size()) - 1) {
+        category = readString("請輸入自訂分類: ");
+    } else {
+        category = categoryOptions[catChoice];
+    }
+
+    std::string listingTime = getCurrentTimestamp();
+
     std::string owner;
     if (warehouse.getCurrentUser()->getRole() == "Admin") {
         owner = readString("請指派貨物擁有人 (使用者帳號): ");
@@ -353,17 +463,17 @@ void TUI::addCargoFlow() {
     if (typeChoice == 1) { // 危險品
         int hazardLevel = readInt("請輸入危險等級 (1-9): ");
         std::string unNumber = readString("請輸入 UN 聯合國物資編號 (例如 UN3480): ");
-        newCargo = std::make_shared<DangerousCargo>(id, name, weight, volume, baseRate, owner, hazardLevel, unNumber);
+        newCargo = std::make_shared<DangerousCargo>(id, name, weight, volume, baseRate, owner, category, listingTime, "Active", hazardLevel, unNumber);
     } else if (typeChoice == 2) { // 易腐品
         std::string expiryDate = readString("請輸入到期日 (格式 YYYY-MM-DD): ");
         double requiredTemp = readDouble("請輸入溫控需求 (°C): ");
-        newCargo = std::make_shared<PerishableCargo>(id, name, weight, volume, baseRate, owner, expiryDate, requiredTemp);
+        newCargo = std::make_shared<PerishableCargo>(id, name, weight, volume, baseRate, owner, category, listingTime, "Active", expiryDate, requiredTemp);
     } else if (typeChoice == 3) { // 易碎品
         std::string packagingType = readString("請輸入防護包裝方式 (如 木箱 / 氣泡紙): ");
         int maxStackHeight = readInt("請輸入最大堆疊高度層數: ");
-        newCargo = std::make_shared<FragileCargo>(id, name, weight, volume, baseRate, owner, packagingType, maxStackHeight);
+        newCargo = std::make_shared<FragileCargo>(id, name, weight, volume, baseRate, owner, category, listingTime, "Active", packagingType, maxStackHeight);
     } else { // 普通貨物
-        newCargo = std::make_shared<Cargo>(id, name, weight, volume, baseRate, owner);
+        newCargo = std::make_shared<Cargo>(id, name, weight, volume, baseRate, owner, category, listingTime, "Active");
     }
 
     if (warehouse.addCargo(newCargo)) {
@@ -381,24 +491,30 @@ void TUI::removeCargoFlow() {
     clearScreen();
     printHeader("辦理貨物出庫");
 
-    std::string id = readString("請輸入要辦理出庫的貨物 ID: ");
-    auto cargo = warehouse.findCargo(id);
-
-    if (!cargo) {
-        std::cout << COLOR_RED << "找不到該貨物 ID！" << COLOR_RESET << std::endl;
-        std::cout << "按任意鍵返回..." << std::endl;
-        std::cin.get();
-        return;
-    }
-
-    // 權限檢查：一般作業員只能刪除自己的貨物
+    // 以選單方式列出可下架（Active）貨物，使用者可直接選取
+    auto inventory = warehouse.getInventory();
     auto curUser = warehouse.getCurrentUser();
-    if (curUser->getRole() != "Admin" && cargo->getOwner() != curUser->getUsername()) {
-        std::cout << COLOR_RED << "權限不足：您無法為其他使用者擁有的貨物辦理出庫！" << COLOR_RESET << std::endl;
+    std::vector<std::shared_ptr<Cargo>> selectable;
+    std::vector<std::string> options;
+    for (const auto& c : inventory) {
+        if (!c->isListed()) continue; // 只列出上架貨物
+        if (curUser->getRole() != "Admin" && c->getOwner() != curUser->getUsername()) continue;
+        selectable.push_back(c);
+        std::ostringstream oss;
+        oss << c->getId() << " - " << c->getName() << " (" << (c->getCategory().empty() ? "未分類" : c->getCategory()) << ")";
+        options.push_back(oss.str());
+    }
+
+    if (selectable.empty()) {
+        std::cout << COLOR_YELLOW << "目前沒有可供下架的貨物。" << COLOR_RESET << std::endl;
         std::cout << "按任意鍵返回..." << std::endl;
         std::cin.get();
         return;
     }
+
+    int pick = selectMenu("請選擇要下架的貨物", options);
+    auto cargo = selectable[pick];
+    std::string id = cargo->getId();
 
     std::cout << COLOR_YELLOW << "\n確定要出庫以下貨物嗎？" << COLOR_RESET << std::endl;
     cargo->printDetails();
@@ -407,12 +523,82 @@ void TUI::removeCargoFlow() {
     if (confirm == "Y" || confirm == "y") {
         if (warehouse.removeCargo(id)) {
             database.saveCargo(warehouse);
-            std::cout << COLOR_GREEN << "貨物出庫完成，資料庫已更新。" << COLOR_RESET << std::endl;
+            std::cout << COLOR_GREEN << "貨物已下架，資料庫已更新。" << COLOR_RESET << std::endl;
         } else {
-            std::cout << COLOR_RED << "出庫失敗！" << COLOR_RESET << std::endl;
+            std::cout << COLOR_RED << "下架失敗！可能該貨物已經是下架狀態。" << COLOR_RESET << std::endl;
         }
     } else {
         std::cout << "取消出庫。" << std::endl;
+    }
+
+    std::cout << "按任意鍵返回..." << std::endl;
+    std::cin.get();
+}
+
+void TUI::viewUnlistedCargoFlow(bool showAll) {
+    clearScreen();
+    printHeader(showAll ? "所有下架貨物清單" : "您的下架貨物清單");
+
+    auto inventory = warehouse.getInventory();
+    auto curUser = warehouse.getCurrentUser();
+    std::vector<std::shared_ptr<Cargo>> displayList;
+    for (const auto& c : inventory) {
+        if (!c->isListed() && (showAll || c->getOwner() == curUser->getUsername())) {
+            displayList.push_back(c);
+        }
+    }
+
+    if (displayList.empty()) {
+        std::cout << COLOR_YELLOW << "目前沒有任何下架貨物。" << COLOR_RESET << std::endl;
+    } else {
+        std::cout << COLOR_BOLD;
+        std::cout << std::left << std::setw(8) << "ID"
+                  << std::setw(15) << "名稱"
+                  << std::setw(10) << "類別"
+                  << std::right << std::setw(13) << "重量"
+                  << std::setw(13) << "容積"
+                  << std::setw(15) << "預估費用" << std::endl;
+        std::cout << "--------------------------------------------------------------------------------" << COLOR_RESET << std::endl;
+        for (const auto& cargo : displayList) {
+            cargo->printDetails();
+        }
+        std::cout << "--------------------------------------------------------------------------------" << std::endl;
+        std::cout << "總計下架貨物數: " << displayList.size() << " 件" << std::endl;
+    }
+    std::cout << "\n按任意鍵返回選單..." << std::endl;
+    std::cin.get();
+}
+
+void TUI::relistCargoFlow() {
+    clearScreen();
+    printHeader("重新上架貨物");
+
+    std::string id = readString("請輸入要重新上架的貨物 ID: ");
+    auto cargo = warehouse.findCargo(id);
+    if (!cargo) {
+        std::cout << COLOR_RED << "找不到該貨物 ID！" << COLOR_RESET << std::endl;
+        std::cout << "按任意鍵返回..." << std::endl;
+        std::cin.get();
+        return;
+    }
+
+    auto curUser = warehouse.getCurrentUser();
+    if (curUser->getRole() != "Admin" && cargo->getOwner() != curUser->getUsername()) {
+        std::cout << COLOR_RED << "權限不足：您無法重新上架他人擁有的貨物！" << COLOR_RESET << std::endl;
+        std::cout << "按任意鍵返回..." << std::endl;
+        std::cin.get();
+        return;
+    }
+
+    if (cargo->isListed()) {
+        std::cout << COLOR_YELLOW << "該貨物已經是上架狀態。" << COLOR_RESET << std::endl;
+    } else {
+        if (warehouse.relistCargo(id)) {
+            database.saveCargo(warehouse);
+            std::cout << COLOR_GREEN << "貨物已重新上架。" << COLOR_RESET << std::endl;
+        } else {
+            std::cout << COLOR_RED << "重新上架失敗！" << COLOR_RESET << std::endl;
+        }
     }
 
     std::cout << "按任意鍵返回..." << std::endl;
@@ -488,7 +674,7 @@ void TUI::addUserFlow() {
         return;
     }
 
-    std::string password = readString("請輸入新密碼: ");
+    std::string password = readPassword("請輸入新密碼: ");
     
     std::vector<std::string> roleOptions = {
         "一般作業員 (Regular Operator)",

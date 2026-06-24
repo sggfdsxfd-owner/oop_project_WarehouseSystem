@@ -9,8 +9,9 @@ private:
     std::string unNumber;   // UN 聯合國危險貨物編號
 
 public:
-    DangerousCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                   const std::string& owner, int hazardLevel, const std::string& unNumber);
+    DangerousCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate,
+                   const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                   int hazardLevel, const std::string& unNumber);
 
     double calculateStorageFee() const override;
     void printDetails() const override;

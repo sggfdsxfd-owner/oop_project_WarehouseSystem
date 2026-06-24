@@ -9,8 +9,9 @@ private:
     double requiredTemp;     // 溫控需求 (單位: °C)
 
 public:
-    PerishableCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate, 
-                    const std::string& owner, const std::string& expiryDate, double requiredTemp);
+    PerishableCargo(const std::string& id, const std::string& name, double weight, double volume, double baseRate,
+                    const std::string& owner, const std::string& category, const std::string& listingTime, const std::string& status,
+                    const std::string& expiryDate, double requiredTemp);
 
     double calculateStorageFee() const override;
     void printDetails() const override;
