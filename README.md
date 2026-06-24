@@ -81,6 +81,7 @@ cmake --build build
 
 ---
 
+<<<<<<< HEAD
 ## 🧭 開發迭代流程
 本專案採用簡潔的迭代式開發流程，包含以下階段：
 
@@ -106,6 +107,8 @@ cmake --build build
 
 ---
 
+=======
+>>>>>>> origin/main
 ## 🔑 預設登入帳密
 
 系統已預載兩組帳號供您展示：
@@ -141,7 +144,7 @@ Type,ID,Name,Weight,Volume,BaseRate,Owner,Category,ListingTime,Status,TypeSpecif
 ```
 General,C001,普通箱子,100,2,50,user,未分類,2026-06-24 17:00:00,Active
 Dangerous,C002,鋰電池組,50,0.5,120,user,電子,2026-06-24 17:02:10,Active,5,UN3480
-Perishable,C003,新鮮水蜜桃,200,1.2,80,user,水果,2026-06-24 17:05:00,Active,2026-07-01,4
+Perishable,C003,新鮮水蜜桃,200,1.2,80,user,水果,2026-07-01,4
 Fragile,C004,高級水晶燈,10,0.8,100,user,家飾,2026-06-24 17:06:30,Active,木箱,1
 ```
 
@@ -217,3 +220,4 @@ ID: C030
 ```
 
 如需我把流程圖另外輸出成 `docs/flowchart.md` 或加入專案 Wiki，請告訴我你想放的位置。
+
